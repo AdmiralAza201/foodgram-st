@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:13.4
+    restart: always
+    env_file: ./.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  backend:
+    build: ../backend
+    restart: always
+    env_file: ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static_value:/app/static
+      - media_value:/app/media
+      - ../data:/app/data:ro
+    expose:
+      - "8000"
+
+  frontend:
+    build: ../frontend
+    restart: "no"
+    command: /bin/sh -lc "cp -r /app/build/* /build-out/ || true"
+    volumes:
+      - frontend_build:/build-out
+
+  nginx:
+    image: nginx:1.25-alpine
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_value:/var/www/static:ro
+      - media_value:/var/www/media:ro
+      - frontend_build:/usr/share/nginx/html:ro
+
+volumes:
+  pgdata:
+  static_value:
+  media_value:
+  frontend_build:
