@@ -101,5 +101,3 @@ docker compose exec backend python manage.py import_ingredients --dir /app/data
 
 ## Автор
 Кичиков Алексей Михайлович
-
-Переписал почти все, поставьте пожалуйста зачет :-)

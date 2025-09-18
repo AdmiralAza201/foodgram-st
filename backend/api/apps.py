@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class MenuConfig(AppConfig):
+class ApiConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "menu"
-    verbose_name = "Меню"
+    name = "api"
+    verbose_name = "API"

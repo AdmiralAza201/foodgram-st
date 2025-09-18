@@ -13,33 +13,48 @@ from .models import (
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'slug', 'color')
-    search_fields = ('name', 'slug')
+    list_display = ("id", "name", "slug", "color")
+    search_fields = ("name", "slug")
 
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'measurement_unit')
-    search_fields = ('name',)
+    list_display = ("id", "name", "measurement_unit")
+    search_fields = ("name",)
 
 
 class RecipeIngredientInline(admin.TabularInline):
     model = RecipeIngredient
     extra = 0
+    min_num = 1
+    validate_min = True
 
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'author', 'favorites_count')
-    search_fields = ('name', 'author__username', 'author__email')
+    list_display = ("id", "name", "author", "favorites_count")
+    search_fields = ("name", "author__username", "author__email")
     inlines = [RecipeIngredientInline]
 
+    @admin.display(description="В избранном (шт.)")
     def favorites_count(self, obj):
-        return obj.favorited_by.count()
-
-    favorites_count.short_description = 'В избранном (шт.)'
+        return obj.favorites.count()
 
 
-admin.site.register(Favorite)
-admin.site.register(ShoppingCart)
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ("user", "recipe")
+    search_fields = ("user__username", "user__email", "recipe__name")
+    autocomplete_fields = ("user", "recipe")
+    list_filter = ("recipe__tags",)
+
+
+@admin.register(ShoppingCart)
+class ShoppingCartAdmin(admin.ModelAdmin):
+    list_display = ("user", "recipe")
+    search_fields = ("user__username", "user__email", "recipe__name")
+    autocomplete_fields = ("user", "recipe")
+    list_filter = ("recipe__tags",)
+
+
 admin.site.register(ShortLinkRecipe)
