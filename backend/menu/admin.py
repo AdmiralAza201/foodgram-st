@@ -7,14 +7,7 @@ from .models import (
     RecipeIngredient,
     ShoppingCart,
     ShortLinkRecipe,
-    Tag,
 )
-
-
-@admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "slug", "color")
-    search_fields = ("name", "slug")
 
 
 @admin.register(Ingredient)
@@ -46,7 +39,6 @@ class FavoriteAdmin(admin.ModelAdmin):
     list_display = ("user", "recipe")
     search_fields = ("user__username", "user__email", "recipe__name")
     autocomplete_fields = ("user", "recipe")
-    list_filter = ("recipe__tags",)
 
 
 @admin.register(ShoppingCart)
@@ -54,7 +46,6 @@ class ShoppingCartAdmin(admin.ModelAdmin):
     list_display = ("user", "recipe")
     search_fields = ("user__username", "user__email", "recipe__name")
     autocomplete_fields = ("user", "recipe")
-    list_filter = ("recipe__tags",)
 
 
 admin.site.register(ShortLinkRecipe)

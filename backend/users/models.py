@@ -5,21 +5,36 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
+from core.constants import (
+    USER_FIRST_NAME_MAX_LENGTH,
+    USER_LAST_NAME_MAX_LENGTH,
+    USERNAME_HELP_TEXT_TEMPLATE,
+    USERNAME_MAX_LENGTH,
+)
+
 
 class User(AbstractUser):
     username = models.CharField(
         _("username"),
-        max_length=150,
+        max_length=USERNAME_MAX_LENGTH,
         unique=True,
-        help_text=_("Обязательное поле. Не более 150 символов."),
+        help_text=_(
+            USERNAME_HELP_TEXT_TEMPLATE.format(limit_value=USERNAME_MAX_LENGTH)
+        ),
         validators=[AbstractUser.username_validator],
         error_messages={
             "unique": _("Пользователь с таким username уже существует."),
         },
     )
     email = models.EmailField(_("email address"), unique=True)
-    first_name = models.CharField(_("first name"), max_length=150)
-    last_name = models.CharField(_("last name"), max_length=150)
+    first_name = models.CharField(
+        _("first name"),
+        max_length=USER_FIRST_NAME_MAX_LENGTH,
+    )
+    last_name = models.CharField(
+        _("last name"),
+        max_length=USER_LAST_NAME_MAX_LENGTH,
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "first_name", "last_name"]
@@ -37,7 +52,7 @@ class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="profile",
+        related_name="profiles",
         verbose_name="Пользователь",
     )
     avatar = models.ImageField(

@@ -1,89 +1,26 @@
 from django.conf import settings
-from django.core.validators import (
-    MaxValueValidator,
-    MinValueValidator,
-    RegexValidator,
-)
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from core.constants import (
     COOKING_TIME_MAX,
     COOKING_TIME_MIN,
-    HEX_COLOR_PATTERN,
+    COOKING_TIME_MAX_MESSAGE,
+    COOKING_TIME_MIN_MESSAGE,
     INGREDIENT_AMOUNT_MIN,
     INGREDIENT_AMOUNT_MAX,
+    INGREDIENT_MAX_MESSAGE,
+    INGREDIENT_MIN_MESSAGE,
     INGREDIENT_NAME_MAX_LENGTH,
     INGREDIENT_UNIT_MAX_LENGTH,
     RECIPE_NAME_MAX_LENGTH,
     SHORT_LINK_CODE_MAX_LENGTH,
-    TAG_COLOR_DEFAULT,
-    TAG_COLOR_MAX_LENGTH,
-    TAG_NAME_MAX_LENGTH,
-    TAG_SLUG_MAX_LENGTH,
-)
-
-COOKING_TIME_MIN_MESSAGE = " ".join(
-    [
-        "Время приготовления не может быть меньше",
-        "{value} минуты.",
-    ]
-)
-COOKING_TIME_MAX_MESSAGE = " ".join(
-    [
-        "Время приготовления не может превышать",
-        "{value} минут.",
-    ]
-)
-INGREDIENT_MIN_MESSAGE = " ".join(
-    [
-        "Количество не может быть меньше",
-        "{value}.",
-    ]
-)
-INGREDIENT_MAX_MESSAGE = " ".join(
-    [
-        "Количество не может превышать",
-        "{value}.",
-    ]
 )
 
 CTIME_MIN_ERROR = COOKING_TIME_MIN_MESSAGE.format(value=COOKING_TIME_MIN)
 CTIME_MAX_ERROR = COOKING_TIME_MAX_MESSAGE.format(value=COOKING_TIME_MAX)
 ING_MIN_ERROR = INGREDIENT_MIN_MESSAGE.format(value=INGREDIENT_AMOUNT_MIN)
 ING_MAX_ERROR = INGREDIENT_MAX_MESSAGE.format(value=INGREDIENT_AMOUNT_MAX)
-
-
-class Tag(models.Model):
-    name = models.CharField(
-        max_length=TAG_NAME_MAX_LENGTH,
-        unique=True,
-        verbose_name="Название",
-    )
-    color = models.CharField(
-        max_length=TAG_COLOR_MAX_LENGTH,
-        unique=True,
-        verbose_name="Цвет",
-        default=TAG_COLOR_DEFAULT,
-        validators=[
-            RegexValidator(
-                regex=HEX_COLOR_PATTERN,
-                message="Цвет указывается в HEX-формате (#RRGGBB).",
-            )
-        ],
-    )
-    slug = models.SlugField(
-        max_length=TAG_SLUG_MAX_LENGTH,
-        unique=True,
-        verbose_name="Слаг",
-    )
-
-    class Meta:
-        ordering = ("name",)
-        verbose_name = "Тег"
-        verbose_name_plural = "Теги"
-
-    def __str__(self):
-        return self.name
 
 
 class Ingredient(models.Model):
@@ -141,11 +78,6 @@ class Recipe(models.Model):
             ),
         ],
         verbose_name="Время приготовления (мин)",
-    )
-    tags = models.ManyToManyField(
-        Tag,
-        related_name="recipes",
-        verbose_name="Теги",
     )
     ingredients = models.ManyToManyField(
         Ingredient,
@@ -248,7 +180,7 @@ class ShoppingCart(models.Model):
     )
 
     class Meta:
-        default_related_name = "shopping_cart_items"
+        default_related_name = "shopping_carts"
         verbose_name = "Элемент списка покупок"
         verbose_name_plural = "Список покупок"
         constraints = [

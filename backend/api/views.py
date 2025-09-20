@@ -5,6 +5,7 @@ from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.urls import reverse
 from django.utils.crypto import get_random_string
 from django_filters.rest_framework import DjangoFilterBackend
+from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import status, viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import action
@@ -22,8 +23,8 @@ from menu.models import (
     RecipeIngredient,
     ShoppingCart,
     ShortLinkRecipe,
-    Tag,
 )
+from users.models import Profile, Subscription, User
 
 from .filters import RecipeFilter
 from .pagination import LimitPageNumberPagination
@@ -31,11 +32,14 @@ from .permissions import IsAuthorOrAdmin
 from .serializers import (
     FavoriteActionSerializer,
     IngredientSerializer,
-    TagSerializer,
     RecipeMinifiedSerializer,
     RecipeReadSerializer,
     RecipeWriteSerializer,
+    SetAvatarSerializer,
     ShoppingCartActionSerializer,
+    SubscriptionActionSerializer,
+    UserSerializer,
+    UserWithRecipesSerializer,
 )
 
 
@@ -53,8 +57,9 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all().select_related("author")
-    queryset = queryset.prefetch_related("ingredients")
+    queryset = Recipe.objects.select_related("author").prefetch_related(
+        "ingredients"
+    )
     filterset_class = RecipeFilter
     pagination_class = LimitPageNumberPagination
     authentication_classes = [TokenAuthentication]
@@ -115,7 +120,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def _aggregate_shopping_items(self, user):
         base_queryset = RecipeIngredient.objects.filter(
-            recipe__shopping_cart_items__user=user
+            recipe__shopping_carts__user=user
         )
         return (
             base_queryset.values(
@@ -185,12 +190,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def perform_update(self, serializer):
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        instance.delete()
-
     @action(
         detail=True,
         methods=["get"],
@@ -209,11 +208,85 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response({"short-link": short_url})
 
 
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
+class UserViewSet(DjoserUserViewSet):
+    queryset = User.objects.all().order_by("email")
+    pagination_class = LimitPageNumberPagination
+    serializer_class = UserSerializer
     permission_classes = [AllowAny]
-    pagination_class = None
+
+    def get_permissions(self):
+        if self.action in ("me", "subscriptions", "subscribe", "avatar"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == "subscriptions":
+            return UserWithRecipesSerializer
+        return super().get_serializer_class()
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+    )
+    def subscriptions(self, request, *args, **kwargs):
+        authors = User.objects.filter(
+            subscribers__user=request.user,
+        ).order_by("email")
+        page = self.paginate_queryset(authors)
+        serializer = self.get_serializer(page or authors, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["post", "delete"],
+        permission_classes=[IsAuthenticated],
+    )
+    def subscribe(self, request, *args, **kwargs):
+        author = self.get_object()
+        if request.method.lower() == "post":
+            serializer = SubscriptionActionSerializer(
+                data={},
+                context={"request": request, "author": author},
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            data = UserWithRecipesSerializer(
+                author,
+                context=self.get_serializer_context(),
+            ).data
+            return Response(data, status=status.HTTP_201_CREATED)
+        deleted, _ = Subscription.objects.filter(
+            user=request.user,
+            author=author,
+        ).delete()
+        if not deleted:
+            return Response(
+                {"detail": "Не были подписаны"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        methods=["put", "delete"],
+        permission_classes=[IsAuthenticated],
+        url_path="me/avatar",
+    )
+    def avatar(self, request, *args, **kwargs):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        if request.method.lower() == "delete":
+            if profile.avatar:
+                profile.avatar.delete(save=True)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = SetAvatarSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile.avatar = serializer.validated_data["avatar"]
+        profile.save(update_fields=["avatar"])
+        avatar_url = request.build_absolute_uri(profile.avatar.url)
+        return Response({"avatar": avatar_url}, status=status.HTTP_200_OK)
 
 
 def short_redirect(request, code):

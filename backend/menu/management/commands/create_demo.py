@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from menu.models import Ingredient, Recipe, RecipeIngredient, Tag
+from menu.models import Ingredient, Recipe, RecipeIngredient
 
 
 _PNG_BASE64 = (
@@ -16,12 +16,6 @@ _PNG_BASE64 = (
 _PNG_CONTENT = base64.b64decode(_PNG_BASE64)
 
 
-_TAGS = (
-    ("breakfast", "Завтрак", "#E26C2D"),
-    ("lunch", "Обед", "#49B64E"),
-    ("dinner", "Ужин", "#8775D2"),
-)
-
 _INGREDIENTS = (
     ("Мука", "г"),
     ("Яйцо", "шт"),
@@ -30,12 +24,11 @@ _INGREDIENTS = (
 
 
 class Command(BaseCommand):
-    help = "Create demo users/recipes/tags/ingredients"
+    help = "Create demo users, ingredients and recipes"
 
     @transaction.atomic
     def handle(self, *args, **kwargs):
         users = self._ensure_demo_users()
-        self._ensure_tags()
         ingredients = self._ensure_ingredients()
         self._ensure_recipes(users, ingredients)
         self.stdout.write(self.style.SUCCESS("Demo created"))
@@ -54,13 +47,6 @@ class Command(BaseCommand):
                 user.save()
             demo_users[username] = user
         return demo_users
-
-    def _ensure_tags(self):
-        for slug, name, color in _TAGS:
-            Tag.objects.get_or_create(
-                slug=slug,
-                defaults={"name": name, "color": color},
-            )
 
     def _ensure_ingredients(self):
         created = {}
@@ -108,12 +94,6 @@ class Command(BaseCommand):
                     ContentFile(_PNG_CONTENT),
                     save=True,
                 )
-
-            tag_qs = Tag.objects.all()
-            if name == "Блинчики":
-                recipe.tags.set(tag_qs[:2])
-            else:
-                recipe.tags.set(tag_qs[1:])
 
             for ingredient_name, amount in ingredient_specs:
                 RecipeIngredient.objects.get_or_create(

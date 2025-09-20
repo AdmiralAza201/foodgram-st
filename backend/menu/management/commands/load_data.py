@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from menu.models import Ingredient, Recipe, RecipeIngredient, Tag
+from menu.models import Ingredient, Recipe, RecipeIngredient
 
 
 def _get(obj, *keys, default=None):
@@ -20,8 +20,8 @@ def _get(obj, *keys, default=None):
 
 class Command(BaseCommand):
     help = (
-        "Load tags, ingredients, recipes from data/*.json"
-        " (supports multiple schemas)"
+        "Load ingredients and recipes from data/*.json "
+        "(supports multiple schemas)"
     )
 
     def add_arguments(self, parser):
@@ -49,25 +49,9 @@ class Command(BaseCommand):
                 user.set_password("demo12345")
                 user.save()
 
-        self._load_tags(base_dir)
         self._load_ingredients(base_dir)
         self._load_recipes(base_dir, user_model)
         self.stdout.write(self.style.SUCCESS(f"Loaded data from {base_dir}"))
-
-    def _load_tags(self, base_dir: Path):
-        path = base_dir / "tags.json"
-        if not path.exists():
-            return
-        items = json.loads(path.read_text(encoding="utf-8"))
-        for item in items:
-            slug = _get(item, "slug")
-            name = _get(item, "name", "title")
-            color = _get(item, "color", default="#FFFFFF")
-            if slug and name:
-                Tag.objects.get_or_create(
-                    slug=slug,
-                    defaults={"name": name, "color": color},
-                )
 
     def _load_ingredients(self, base_dir: Path):
         path = base_dir / "ingredients.json"
@@ -107,7 +91,6 @@ class Command(BaseCommand):
                 },
             )
             self._load_recipe_image(recipe, item)
-            self._load_recipe_tags(recipe, item)
             self._load_recipe_ingredients(recipe, item)
 
     def _load_recipe_image(self, recipe, item):
@@ -119,11 +102,6 @@ class Command(BaseCommand):
         except (TypeError, ValueError, binascii.Error):
             return
         recipe.image.save("img.png", ContentFile(content), save=True)
-
-    def _load_recipe_tags(self, recipe, item):
-        slugs = _get(item, "tags", default=[])
-        if slugs:
-            recipe.tags.set(list(Tag.objects.filter(slug__in=slugs)))
 
     def _load_recipe_ingredients(self, recipe, item):
         ingredients = _get(item, "ingredients", default=[])

@@ -7,7 +7,6 @@ from api.views import short_redirect
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("api.urls")),
-    path("api/", include("users.urls")),
     re_path(
         r"^s/(?P<code>[A-Za-z0-9_-]+)/?$",
         short_redirect,
