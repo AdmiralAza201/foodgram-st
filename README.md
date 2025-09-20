@@ -5,7 +5,7 @@ Foodgram — сервис для публикации и обмена рецеп
 ## Возможности
 - регистрация и аутентификация по токену
 - управление профилем пользователя и аватаром
-- создание, редактирование и удаление рецептов с ингредиентами и тегами
+- создание, редактирование и удаление рецептов с ингредиентами
 - добавление рецептов в избранное и загрузка списка покупок
 - подписки на авторов и получение их рецептов в ленте
 - короткие ссылки на рецепты и документация API по адресу `/api/docs/`
@@ -54,7 +54,7 @@ Foodgram — сервис для публикации и обмена рецеп
    cd infra
    docker compose up -d --build
    ```
-4. После успешного старта приложения доступны:
+4. После успешного старта приложения доступны (после запуска контейнеров страницы становятся активными):
    - веб-интерфейс: http://localhost/
    - документация API: http://localhost/api/docs/
 
@@ -74,6 +74,159 @@ docker compose exec backend python manage.py import_ingredients --dir /app/data
 ```
 
 Для остановки контейнеров используйте `docker compose down`. Статические и медиаданные сохраняются в именованных volume, поэтому не теряются между перезапусками.
+
+## Документация и примеры API
+Документация в формате ReDoc доступна по адресу `/api/docs/` только после развёртывания проекта. Ниже приведено несколько примеров запросов и ответов для общего представления о формате API.
+
+### Получить список рецептов
+**Запрос**
+```http
+GET /api/recipes/
+```
+
+**Ответ**
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Тыквенный суп",
+      "image": "http://localhost/media/recipes/pumpkin_soup.jpg",
+      "text": "Пюрировать запечённую тыкву с овощами.",
+      "cooking_time": 30,
+      "author": {
+        "email": "chef@example.com",
+        "id": 5,
+        "username": "chef",
+        "first_name": "Анна",
+        "last_name": "Иванова",
+        "is_subscribed": true,
+        "avatar": "http://localhost/media/users/chef.png"
+      },
+      "ingredients": [
+        {
+          "id": 3,
+          "name": "Тыква",
+          "measurement_unit": "г",
+          "amount": 500
+        },
+        {
+          "id": 7,
+          "name": "Сливки",
+          "measurement_unit": "мл",
+          "amount": 200
+        }
+      ],
+      "is_favorited": true,
+      "is_in_shopping_cart": false
+    }
+  ]
+}
+```
+
+### Создать рецепт
+**Запрос**
+```http
+POST /api/recipes/
+Authorization: Token <token>
+Content-Type: application/json
+
+{
+  "name": "Смузи",
+  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+  "text": "Смешать ягоды, банан и йогурт в блендере.",
+  "cooking_time": 5,
+  "ingredients": [
+    {"id": 12, "amount": 150},
+    {"id": 18, "amount": 100}
+  ]
+}
+```
+
+**Ответ**
+```json
+{
+  "id": 42,
+  "name": "Смузи",
+  "image": "http://localhost/media/recipes/smuzi.png",
+  "text": "Смешать ягоды, банан и йогурт в блендере.",
+  "cooking_time": 5,
+  "author": {
+    "email": "user@example.com",
+    "id": 7,
+    "username": "user",
+    "first_name": "Мария",
+    "last_name": "Петрова",
+    "is_subscribed": false,
+    "avatar": null
+  },
+  "ingredients": [
+    {
+      "id": 12,
+      "name": "Клубника",
+      "measurement_unit": "г",
+      "amount": 150
+    },
+    {
+      "id": 18,
+      "name": "Йогурт",
+      "measurement_unit": "мл",
+      "amount": 100
+    }
+  ],
+  "is_favorited": false,
+  "is_in_shopping_cart": false
+}
+```
+
+### Подписаться на автора
+**Запрос**
+```http
+POST /api/users/5/subscribe/
+Authorization: Token <token>
+```
+
+**Ответ**
+```json
+{
+  "email": "chef@example.com",
+  "id": 5,
+  "username": "chef",
+  "first_name": "Анна",
+  "last_name": "Иванова",
+  "is_subscribed": true,
+  "avatar": "http://localhost/media/users/chef.png",
+  "recipes": [
+    {
+      "id": 1,
+      "name": "Тыквенный суп",
+      "image": "http://localhost/media/recipes/pumpkin_soup.jpg",
+      "cooking_time": 30
+    }
+  ],
+  "recipes_count": 1
+}
+```
+
+### Добавить рецепт в список покупок
+**Запрос**
+```http
+POST /api/recipes/1/shopping_cart/
+Authorization: Token <token>
+```
+
+**Ответ**
+```json
+{
+  "id": 1,
+  "name": "Тыквенный суп",
+  "image": "http://localhost/media/recipes/pumpkin_soup.jpg",
+  "cooking_time": 30
+}
+```
 
 ## Локальная разработка без Docker
 1. Установите и запустите PostgreSQL 13, создайте базу и пользователя из `.env`.
